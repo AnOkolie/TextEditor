@@ -5,16 +5,14 @@ import { prisma } from "../lib/prisma.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { ENV } from "../lib/ENV.js";
 import { Resend } from "resend";
-import {
-  EMAIL_SUBJECT_FORGOT_PASSWORD,
-  EMAIL_SUBJECT_WELCOME,
-} from "../constants/strings.ts";
+
 import React from "react";
 import { transporter } from "../lib/email.ts";
-import fs from "fs";
-import path from "path";
-const __dirname = path.resolve();
-// import { forgotPassword as Forgot } from "../emailTemplates/forgotpassword.tsx";
+import { sendMail } from "../emails/sendEmail.js";
+import {
+  welcomeOptions,
+  forgotPasswordOptions,
+} from "../emails/templates/emailOptions.js";
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -79,6 +77,9 @@ export const register = async (req, res) => {
         name: name,
         password: hashedPassword,
       },
+      omit: {
+        password: true,
+      },
     });
 
     const payload = {
@@ -93,25 +94,18 @@ export const register = async (req, res) => {
       sameSite: "strict",
       maxAge: 2 * 60 * 60 * 1000, // 2 hours
     });
-    const welcomeEmail = fs.readFileSync(
-      path.join(__dirname, "./src/emailTemplates/welcomeEmail.html"),
-      "utf8",
-    );
-    const welcomeOptions = {
-      from: ENV.SMTP_USER,
-      to: email,
-      subject: EMAIL_SUBJECT_WELCOME,
-      html: welcomeEmail.replace("{{name}}", name).replace("{{email}}", email),
-    };
-    transporter.sendMail(welcomeOptions, (error, info) => {
-      if (error) {
-        return console.log(error);
-      }
-      console.log(`Email sent: ${info.response}`);
-      res.status(200).json({ message: "Welcome email sent" });
-    });
 
-    return res.status(201).json({ message: "User created successfully" });
+    const emailResult = await sendMail(welcomeOptions(user.email, user.name));
+
+    if (emailResult.status === "error") {
+      console.log(`Error sending welcome email: ${emailResult.message}`);
+      throw new Error("Failed to send welcome email");
+    }
+
+    return res.status(201).json({
+      message: "User created successfully",
+      data: user,
+    });
   } catch (error) {
     console.log(`error: ${error}`);
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -139,30 +133,16 @@ export const forgotPassword = async (req, res) => {
       return res.status(400).json({ error: "No matching email" }); // dont actually send
     }
 
-    const forgotPassword = fs.readFileSync(
-      path.join(__dirname, "./src/emailTemplates/forgotPassword.html"),
-      "utf8",
-    );
-    if (!forgotPassword) {
-      console.log("Failed to read forgot password email template");
-      return res.status(500).json({ error: "Internal server error" });
-    }
-    const forgotPasswordOptions = {
-      from: ENV.SMTP_USER,
-      to: email,
-      subject: EMAIL_SUBJECT_FORGOT_PASSWORD,
-      html: forgotPassword.replace(
-        "{{resetLink}}",
-        "https://example.com/reset-password",
-      ),
-    };
-    transporter.sendMail(forgotPasswordOptions, (error, info) => {
-      if (error) {
-        return console.log(error);
-      }
-      console.log(`Email sent: ${info.response}`);
+    const emailResult = await sendMail(forgotPasswordOptions(email));
+    if (emailResult.status === "error") {
+      console.log(
+        `Error sending forgot password email: ${emailResult.message}`,
+      );
+      throw new Error("Failed to send forgot password email");
+    } else {
+      console.log(`Forgot password email sent successfully to ${user.email}`);
       res.status(200).json({ message: "Password reset email sent" });
-    });
+    }
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: "Internal server error" });
