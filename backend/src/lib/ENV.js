@@ -1,4 +1,5 @@
 import "dotenv/config";
+import process from "process";
 
 export const ENV = {
   PORT: process.env.PORT || 3000,
@@ -13,4 +14,7 @@ export const ENV = {
   RESEND_FROM: process.env.RESEND_FROM,
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+  CLIENT_URL: process.env.CLIENT_URL,
+  REDIS_URL: process.env.REDIS_URL,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD,
 };

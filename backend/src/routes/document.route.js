@@ -9,8 +9,8 @@ import {
 
 const router = express.Router();
 
-router.get("/documents", getDocuments);
-router.post("/documents", createDocument);
+router.get("/documents/:userId", getDocuments);
+router.post("/documents/:userId", createDocument);
 // router.get("/document/:id", getDocumentById);
 // router.put("/document/:id", updateDocument);
 // router.delete("/document/:id", deleteDocument);

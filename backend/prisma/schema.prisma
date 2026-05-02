@@ -23,8 +23,9 @@ model documents {
   created_at    DateTime?       @default(now()) @db.Timestamptz(6)
   updated_at    DateTime?       @db.Timestamptz(6)
   title         String
-  user_id       String
+  user_id       String          @db.Uuid
   collaborators collaborators[]
+  users         users           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user")
 }
 
 model users {
@@ -34,6 +35,7 @@ model users {
   email         String          @unique
   created_at    DateTime?       @default(now()) @db.Timestamptz(6)
   collaborators collaborators[]
+  documents     documents[]
 }
 
 enum role_enum {

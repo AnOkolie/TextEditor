@@ -1,14 +1,14 @@
 import { prisma } from "../lib/prisma.ts";
 
 export const getDocuments = async (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.params;
   if (!userId) {
     return res.status(400).json({ error: "User ID is required" });
   }
   try {
-    const response = prisma.documents.findMany({
+    const response = await prisma.documents.findMany({
       where: {
-        id: userId,
+        user_id: userId,
       },
     });
     if (!response) {
@@ -22,22 +22,24 @@ export const getDocuments = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    return res.sttaus(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 export const createDocument = async (req, res) => {
-  const { title, content, userId } = req.body;
-  if (!title || !content || !userId) {
+  const { title, content } = req.body;
+  const { userId } = req.params;
+  if (!title || !userId) {
     return res.status(400).json({ error: "Missing required values" });
   }
 
   try {
+    const textContent = content || "";
     const doc = await prisma.documents.create({
       data: {
         title: title,
-        content: content,
-        userId: userId,
+        content: textContent,
+        user_id: userId,
       },
     });
     if (!doc) {
@@ -50,5 +52,22 @@ export const createDocument = async (req, res) => {
   } catch (error) {
     console.log(error);
     return res.status(200).json({ error: "Internal server error" });
+  }
+};
+
+export const updateDocument = async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: "Reuired fields are missing" });
+  }
+
+  try {
+    const doc = prisma.documents.findUniqueOrThrow({
+      where: {
+        id: id,
+      },
+    });
+  } catch (error) {
+    console.log("Error updating document", error);
   }
 };

@@ -13,6 +13,7 @@ import {
   welcomeOptions,
   forgotPasswordOptions,
 } from "../emails/templates/emailOptions.js";
+import { client } from "../lib/redis-cllient.js";
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -21,11 +22,11 @@ export const login = async (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
   try {
-    const user = await prisma.users.findUnique({
-      where: {
-        email: email,
-      },
-    });
+    const user = await userRepo
+      .search()
+      .where("email")
+      .equals(email)
+      .return.first();
     if (!user || user.rowCount == 0) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
@@ -61,6 +62,7 @@ export const register = async (req, res) => {
       .json({ error: "Username, email and password are required" });
   }
   try {
+    // const existingUser = await userRepo.search().where("email").equals(email).return.first();
     const existingUser = await prisma.users.findUnique({
       where: {
         email: email,
@@ -69,8 +71,8 @@ export const register = async (req, res) => {
     if (existingUser) {
       return res.status(401).json({ error: "This email already exists" });
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
 
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.users.create({
       data: {
         email: email,
@@ -81,6 +83,8 @@ export const register = async (req, res) => {
         password: true,
       },
     });
+
+    await client.set(`user:${user.id}`, JSON.stringify(user));
 
     const payload = {
       user_id: user.id,
@@ -124,11 +128,11 @@ export const forgotPassword = async (req, res) => {
   }
   console.log(`Received forgot password request for email: ${email}`);
   try {
-    const user = await prisma.users.findUnique({
-      where: {
-        email: email,
-      },
-    });
+    const user = await userRepo
+      .search()
+      .where("email")
+      .equals(email)
+      .returnFirst();
     if (!user) {
       return res.status(400).json({ error: "No matching email" }); // dont actually send
     }
